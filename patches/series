@@ -1,3 +1,4 @@
 backport-speedup-require.diff
 st_opt_sparse_array.diff
 ary_queue.diff
+backport-gc.diff
