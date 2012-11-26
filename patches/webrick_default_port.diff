@@ -1,0 +1,84 @@
+commit d3216922c2f42453dcacc65f5409b623d01707df
+Author: usa <usa@b2dd03c8-39d4-4d8f-98ff-823fe69b080e>
+Date:   Thu Nov 15 06:15:17 2012 +0000
+
+    merge revision(s) 36491,36877: [Backport #7320]
+    
+    	Use 0 for webrick's port and get the actual port. [Bug #6766]
+    
+    git-svn-id: svn+ssh://ci.ruby-lang.org/ruby/branches/ruby_1_9_3@37659 b2dd03c8-39d4-4d8f-98ff-823fe69b080e
+
+Index: ruby19/test/net/http/test_http.rb
+===================================================================
+--- ruby19.orig/test/net/http/test_http.rb
++++ ruby19/test/net/http/test_http.rb
+@@ -426,7 +426,7 @@ end
+ class TestNetHTTP_v1_2 < Test::Unit::TestCase
+   CONFIG = {
+     'host' => '127.0.0.1',
+-    'port' => 10081,
++    'port' => 0,
+     'proxy_host' => nil,
+     'proxy_port' => nil,
+   }
+@@ -444,7 +444,7 @@ end
+ class TestNetHTTP_v1_2_chunked < Test::Unit::TestCase
+   CONFIG = {
+     'host' => '127.0.0.1',
+-    'port' => 10081,
++    'port' => 0,
+     'proxy_host' => nil,
+     'proxy_port' => nil,
+     'chunked' => true,
+@@ -476,7 +476,7 @@ end
+ class TestNetHTTPContinue < Test::Unit::TestCase
+   CONFIG = {
+     'host' => '127.0.0.1',
+-    'port' => 10081,
++    'port' => 0,
+     'proxy_host' => nil,
+     'proxy_port' => nil,
+     'chunked' => true,
+Index: ruby19/test/net/http/test_https.rb
+===================================================================
+--- ruby19.orig/test/net/http/test_https.rb
++++ ruby19/test/net/http/test_https.rb
+@@ -24,7 +24,7 @@ class TestNetHTTPS < Test::Unit::TestCas
+ 
+   CONFIG = {
+     'host' => '127.0.0.1',
+-    'port' => 10082, # different from test_http.rb
++    'port' => 0,
+     'proxy_host' => nil,
+     'proxy_port' => nil,
+     'ssl_enable' => true,
+Index: ruby19/test/net/http/utils.rb
+===================================================================
+--- ruby19.orig/test/net/http/utils.rb
++++ ruby19/test/net/http/utils.rb
+@@ -19,7 +19,8 @@ module TestNetHTTPUtils
+   end
+ 
+   def config(key)
+-    self.class::CONFIG[key]
++    @config ||= self.class::CONFIG
++    @config[key]
+   end
+ 
+   def logfile
+@@ -42,6 +43,7 @@ module TestNetHTTPUtils
+   end
+ 
+   def spawn_server
++    @config = self.class::CONFIG
+     server_config = {
+       :BindAddress => config('host'),
+       :Port => config('port'),
+@@ -61,6 +63,7 @@ module TestNetHTTPUtils
+     @server = WEBrick::HTTPServer.new(server_config)
+     @server.mount('/', Servlet, config('chunked'))
+     @server.start
++    @config['port'] = @server[:Port] if @config['port'] == 0
+     n_try_max = 5
+     begin
+       TCPSocket.open(config('host'), config('port')).close
