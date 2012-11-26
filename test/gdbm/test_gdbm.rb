@@ -47,7 +47,7 @@ if defined? GDBM
     end
 
     def test_delete_rdonly
-      if /^CYGWIN_9/ !~ SYSTEM
+      if /^CYGWIN_9/ !~ SYSTEM and Process.euid != 0
         assert_raise(GDBMError) {
           @gdbm_rdonly.delete("foo")
         }
@@ -103,7 +103,7 @@ if defined? GDBM
       assert_nil(gdbm.close)
     end
     def test_s_open_create_new
-      return if /^CYGWIN_9/ =~ SYSTEM
+      return if /^CYGWIN_9/ =~ SYSTEM or Process.euid == 0
 
       save_mask = File.umask(0)
       begin

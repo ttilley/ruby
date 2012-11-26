@@ -92,6 +92,7 @@ class TestFind < Test::Unit::TestCase
 
   def test_unreadable_dir
     skip "no meaning test on Windows" if /mswin|mingw/ =~ RUBY_PLATFORM
+    skip "does not work when running as root" if Process.euid == 0
     Dir.mktmpdir {|d|
       Dir.mkdir(dir = "#{d}/dir")
       File.open(file = "#{dir}/foo", "w"){}
@@ -107,6 +108,7 @@ class TestFind < Test::Unit::TestCase
   end
 
   def test_unsearchable_dir
+    skip "does not work when running as root" if Process.euid == 0
     Dir.mktmpdir {|d|
       Dir.mkdir(dir = "#{d}/dir")
       File.open(file = "#{dir}/foo", "w"){}

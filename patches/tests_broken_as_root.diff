@@ -1,0 +1,49 @@
+tests_broken_as_root
+
+---
+ test/gdbm/test_gdbm.rb |    4 ++--
+ test/test_find.rb      |    2 ++
+ 2 files changed, 4 insertions(+), 2 deletions(-)
+
+Index: ruby19/test/gdbm/test_gdbm.rb
+===================================================================
+--- ruby19.orig/test/gdbm/test_gdbm.rb
++++ ruby19/test/gdbm/test_gdbm.rb
+@@ -47,7 +47,7 @@ if defined? GDBM
+     end
+ 
+     def test_delete_rdonly
+-      if /^CYGWIN_9/ !~ SYSTEM
++      if /^CYGWIN_9/ !~ SYSTEM and Process.euid != 0
+         assert_raise(GDBMError) {
+           @gdbm_rdonly.delete("foo")
+         }
+@@ -103,7 +103,7 @@ if defined? GDBM
+       assert_nil(gdbm.close)
+     end
+     def test_s_open_create_new
+-      return if /^CYGWIN_9/ =~ SYSTEM
++      return if /^CYGWIN_9/ =~ SYSTEM or Process.euid == 0
+ 
+       save_mask = File.umask(0)
+       begin
+Index: ruby19/test/test_find.rb
+===================================================================
+--- ruby19.orig/test/test_find.rb
++++ ruby19/test/test_find.rb
+@@ -92,6 +92,7 @@ class TestFind < Test::Unit::TestCase
+ 
+   def test_unreadable_dir
+     skip "no meaning test on Windows" if /mswin|mingw/ =~ RUBY_PLATFORM
++    skip "does not work when running as root" if Process.euid == 0
+     Dir.mktmpdir {|d|
+       Dir.mkdir(dir = "#{d}/dir")
+       File.open(file = "#{dir}/foo", "w"){}
+@@ -107,6 +108,7 @@ class TestFind < Test::Unit::TestCase
+   end
+ 
+   def test_unsearchable_dir
++    skip "does not work when running as root" if Process.euid == 0
+     Dir.mktmpdir {|d|
+       Dir.mkdir(dir = "#{d}/dir")
+       File.open(file = "#{dir}/foo", "w"){}

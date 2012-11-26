@@ -9,3 +9,4 @@ heap_align_log_15.diff
 st_default_packed_table_size_19.diff
 ree_gc_tunable_compat.diff
 gc_debug_alloc_location.diff
+tests_broken_as_root.diff
