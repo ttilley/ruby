@@ -1,0 +1,35 @@
+commit c185d9cd225b332a13f8e3227b0c30a7996e59e8
+Author: usa <usa@b2dd03c8-39d4-4d8f-98ff-823fe69b080e>
+Date:   Wed Nov 14 11:20:18 2012 +0000
+
+    merge revision(s) 37593: [Backport #7347]
+    
+    	* random.c (BYTE_ORDER): define using configured WORDS_BIGENDIAN.
+    
+    
+    git-svn-id: svn+ssh://ci.ruby-lang.org/ruby/branches/ruby_1_9_3@37653 b2dd03c8-39d4-4d8f-98ff-823fe69b080e
+
+Index: ruby19/random.c
+===================================================================
+--- ruby19.orig/random.c
++++ ruby19/random.c
+@@ -1261,6 +1261,19 @@ random_s_rand(int argc, VALUE *argv, VAL
+ 
+ #define SIP_HASH_STREAMING 0
+ #define sip_hash24 ruby_sip_hash24
++#if !defined _WIN32 && !defined BYTE_ORDER
++# ifdef WORDS_BIGENDIAN
++#   define BYTE_ORDER BIG_ENDIAN
++# else
++#   define BYTE_ORDER LITTLE_ENDIAN
++# endif
++# ifndef LITTLE_ENDIAN
++#   define LITTLE_ENDIAN 1234
++# endif
++# ifndef BIG_ENDIAN
++#   define BIG_ENDIAN    4321
++# endif
++#endif
+ #include "siphash.c"
+ 
+ static st_index_t hashseed;
