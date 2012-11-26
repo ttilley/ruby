@@ -7,3 +7,4 @@ webrick_default_port.diff
 sigprof.diff
 heap_align_log_15.diff
 st_default_packed_table_size_19.diff
+ree_gc_tunable_compat.diff
