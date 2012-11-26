@@ -1,0 +1,21 @@
+Author: Sokolov Yura <funny.falcon@gmail.com>
+
+#define HEAP_ALIGN_LOG 15
+
+---
+ gc.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+Index: ruby19/gc.c
+===================================================================
+--- ruby19.orig/gc.c
++++ ruby19/gc.c
+@@ -568,7 +568,7 @@ rb_objspace_free(rb_objspace_t *objspace
+ 
+ #ifndef HEAP_ALIGN_LOG
+ /* default tiny heap size: 16KB */
+-#define HEAP_ALIGN_LOG 14
++#define HEAP_ALIGN_LOG 15
+ #endif
+ #define HEAP_ALIGN (1UL << HEAP_ALIGN_LOG)
+ #define HEAP_ALIGN_MASK (~(~0UL << HEAP_ALIGN_LOG))
