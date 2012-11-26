@@ -1,1 +1,2 @@
 backport-speedup-require.diff
+st_opt_sparse_array.diff

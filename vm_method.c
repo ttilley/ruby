@@ -2,38 +2,33 @@
  * This file is included by vm.c
  */
 
-#define CACHE_SIZE 0x800
-#define CACHE_MASK 0x7ff
-#define EXPR1(c,m) ((((c)>>3)^(m))&CACHE_MASK)
-
 static void rb_vm_check_redefinition_opt_method(const rb_method_entry_t *me);
 
 static ID object_id, respond_to_missing;
 static ID removed, singleton_removed, undefined, singleton_undefined;
 static ID added, singleton_added, attached;
 
-struct cache_entry {		/* method hash table. */
-    VALUE filled_version;        /* filled state version */
-    ID mid;			/* method's id */
-    VALUE klass;		/* receiver's class */
-    rb_method_entry_t *me;
-};
-
-static struct cache_entry cache[CACHE_SIZE];
 #define ruby_running (GET_VM()->running)
 /* int ruby_running = 0; */
 
+static int
+methods_cache_clear_callback(void *vstart, void *vend, size_t stride, void *data)
+{
+    VALUE v = (VALUE)vstart;
+    for (; v != (VALUE)vend; v += stride) {
+	switch(BUILTIN_TYPE(v)) {
+	    case T_CLASS:
+	    case T_MODULE:
+	    case T_ICLASS:
+		RCLASS(v)->cache->method_cache_version = 0;
+	}
+    }
+    return 0;
+}
 static void
 vm_clear_global_method_cache(void)
 {
-    struct cache_entry *ent, *end;
-
-    ent = cache;
-    end = ent + CACHE_SIZE;
-    while (ent < end) {
-	ent->filled_version = 0;
-	ent++;
-    }
+    rb_objspace_each_objects(methods_cache_clear_callback, NULL);
 }
 
 void
@@ -162,7 +157,7 @@ rb_method_entry_make(VALUE klass, ID mid, rb_method_type_t type,
 		     rb_method_definition_t *def, rb_method_flag_t noex)
 {
     rb_method_entry_t *me;
-    st_table *mtbl;
+    sa_table *mtbl;
     st_data_t data;
 
     if (NIL_P(klass)) {
@@ -190,7 +185,7 @@ rb_method_entry_make(VALUE klass, ID mid, rb_method_type_t type,
     mtbl = RCLASS_M_TBL(klass);
 
     /* check re-definition */
-    if (st_lookup(mtbl, mid, &data)) {
+    if (sa_lookup(mtbl, (sa_index_t)mid, &data)) {
 	rb_method_entry_t *old_me = (rb_method_entry_t *)data;
 	rb_method_definition_t *old_def = old_me->def;
 
@@ -248,7 +243,7 @@ rb_method_entry_make(VALUE klass, ID mid, rb_method_type_t type,
 	}
     }
 
-    st_insert(mtbl, mid, (st_data_t) me);
+    sa_insert(mtbl, (sa_index_t)mid, (st_data_t) me);
 
     return me;
 }
@@ -371,7 +366,7 @@ search_method(VALUE klass, ID id)
 	return 0;
     }
 
-    while (!st_lookup(RCLASS_M_TBL(klass), id, &body)) {
+    while (!sa_lookup(RCLASS_M_TBL(klass), (sa_index_t)id, &body)) {
 	klass = RCLASS_SUPER(klass);
 	if (!klass) {
 	    return 0;
@@ -393,20 +388,10 @@ rb_method_entry_get_without_cache(VALUE klass, ID id)
     rb_method_entry_t *me = search_method(klass, id);
 
     if (ruby_running) {
-	struct cache_entry *ent;
-	ent = cache + EXPR1(klass, id);
-	ent->filled_version = GET_VM_STATE_VERSION();
-	ent->klass = klass;
-
 	if (UNDEFINED_METHOD_ENTRY_P(me)) {
-	    ent->mid = id;
-	    ent->me = 0;
-	    me = 0;
+            me = 0;
 	}
-	else {
-	    ent->mid = id;
-	    ent->me = me;
-	}
+        sa_insert(&RCLASS(klass)->cache->m_cache_tbl, (sa_index_t)id, (st_data_t)me);
     }
 
     return me;
@@ -415,21 +400,23 @@ rb_method_entry_get_without_cache(VALUE klass, ID id)
 rb_method_entry_t *
 rb_method_entry(VALUE klass, ID id)
 {
-    struct cache_entry *ent;
+    rb_class_cache_t *cache = RCLASS(klass)->cache;
+    rb_method_entry_t *me;
 
-    ent = cache + EXPR1(klass, id);
-    if (ent->filled_version == GET_VM_STATE_VERSION() &&
-	ent->mid == id && ent->klass == klass) {
-	return ent->me;
+    if (cache->method_cache_version != GET_VM_STATE_VERSION()) {
+        sa_clear_no_free(&cache->m_cache_tbl);
+        cache->method_cache_version = GET_VM_STATE_VERSION();
     }
-
+    else if (sa_lookup(&cache->m_cache_tbl, (sa_index_t)id, (st_data_t*)&me)) {
+        return me;
+    }
     return rb_method_entry_get_without_cache(klass, id);
 }
 
 static void
 remove_method(VALUE klass, ID mid)
 {
-    st_data_t key, data;
+    st_data_t data;
     rb_method_entry_t *me = 0;
 
     if (klass == rb_cObject) {
@@ -443,14 +430,13 @@ remove_method(VALUE klass, ID mid)
 	rb_warn("removing `%s' may cause serious problems", rb_id2name(mid));
     }
 
-    if (!st_lookup(RCLASS_M_TBL(klass), mid, &data) ||
+    if (!sa_lookup(RCLASS_M_TBL(klass), (sa_index_t)mid, &data) ||
 	!(me = (rb_method_entry_t *)data) ||
 	(!me->def || me->def->type == VM_METHOD_TYPE_UNDEF)) {
 	rb_name_error(mid, "method `%s' not defined in %s",
 		      rb_id2name(mid), rb_class2name(klass));
     }
-    key = (st_data_t)mid;
-    st_delete(RCLASS_M_TBL(klass), &key, &data);
+    sa_delete(RCLASS_M_TBL(klass), (sa_index_t)mid, &data);
 
     rb_vm_check_redefinition_opt_method(me);
     rb_clear_cache_for_undef(klass, mid);
