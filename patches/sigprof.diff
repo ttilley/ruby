@@ -1,0 +1,36 @@
+From: Greg Price <price@mit.edu>
+Date: Wed, 31 Oct 2012 15:53:59 -0700
+Subject: [PATCH] Suppress SIGPROF
+
+We don't handle it well -- the exact reason is unclear, but threading
+seems to trigger it -- so just squelch it.
+
+Building with -pg is necessary for getting call-graph information with
+e.g. the Linux 'perf' profiler.  But -pg also causes the libc startup
+routine to set a SIGPROF timer.  That doesn't serve any purpose with a
+modern profiler like 'perf'; it was used by 'gprof'.
+
+Index: ruby19/main.c
+===================================================================
+--- ruby19.orig/main.c
++++ ruby19/main.c
+@@ -18,6 +18,7 @@
+ #ifdef RUBY_DEBUG_ENV
+ #include <stdlib.h>
+ #endif
++#include <sys/time.h>
+
+ RUBY_GLOBAL_SETUP
+
+@@ -31,6 +32,11 @@ main(int argc, char **argv)
+     setlocale(LC_CTYPE, "");
+ #endif
+
++    {
++	struct itimerval itimer = {{0, 0}, {0, 0}};
++	setitimer(ITIMER_PROF, &itimer, NULL);
++    }
++
+     ruby_sysinit(&argc, &argv);
+     {
+ 	RUBY_INIT_STACK;
