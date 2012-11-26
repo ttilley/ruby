@@ -1,0 +1,25 @@
+Author: Sokolov Yura 'funny-falcon <funny.falcon@gmail.com>
+
+    * st.c: set packed size same as second table size
+      It seems that tcmalloc and jemalloc suffers from difference from
+      ST_DEFAULT_PACKET_TABLE_SIZE and ST_DEFAULT_SECOND_TABLE_SIZE on 64bit
+      platform, cause 18*8 and 19*8 fall into the different allocation buckets.
+      It is not an issue on 32bit platform though.
+
+---
+ st.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+Index: ruby19/st.c
+===================================================================
+--- ruby19.orig/st.c
++++ ruby19/st.c
+@@ -31,7 +31,7 @@ struct st_table_entry {
+ #define ST_DEFAULT_MAX_DENSITY 2
+ #define ST_DEFAULT_INIT_TABLE_SIZE 11
+ #define ST_DEFAULT_SECOND_TABLE_SIZE 19
+-#define ST_DEFAULT_PACKED_TABLE_SIZE 18
++#define ST_DEFAULT_PACKED_TABLE_SIZE 19
+ #define PACKED_UNIT (int)(sizeof(st_packed_entry) / sizeof(st_table_entry*))
+ #define MAX_PACKED_HASH (int)(ST_DEFAULT_PACKED_TABLE_SIZE * sizeof(st_table_entry*) / sizeof(st_packed_entry))
+ 
