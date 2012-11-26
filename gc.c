@@ -1397,6 +1397,24 @@ rb_newobj(void)
     return obj;
 }
 
+#ifdef GC_DEBUG
+VALUE
+rb_obj_alloc_location(VALUE self)
+{
+	VALUE loc[2];
+	const char* file = RANY(self)->file;
+	if (!file) return Qnil;
+	loc[0] = rb_str_new_cstr(file);
+	int line = RANY(self)->line;
+	if (line > 0) {
+		loc[1] = INT2FIX(line);
+	} else {
+		loc[1] = Qnil;
+	}
+	return rb_ary_new4(2, loc);
+}
+#endif
+
 NODE*
 rb_node_newnode(enum node_type type, VALUE a0, VALUE a1, VALUE a2)
 {
@@ -3905,6 +3923,10 @@ Init_GC(void)
 
     rb_define_method(rb_cBasicObject, "__id__", rb_obj_id, 0);
     rb_define_method(rb_mKernel, "object_id", rb_obj_id, 0);
+
+#ifdef GC_DEBUG
+    rb_define_method(rb_mKernel, "alloc_location", rb_obj_alloc_location, 0);
+#endif
 
     rb_define_module_function(rb_mObSpace, "count_objects", count_objects, -1);
 
